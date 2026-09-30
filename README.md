@@ -1,5 +1,7 @@
 # BTDM-CDSS — Brain Tumor Diagnosis Model, Clinical Decision Support System
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23052613.svg)](https://doi.org/10.5281/zenodo.23052613)
+
 Research software accompanying:
 
 > Singh D.B., Pokharel B., Pant B. *Deep learning techniques for brain tumour diagnosis via multi-source domain alignment with contrastive learning* (Part 1). npj Digital Medicine (under review).
