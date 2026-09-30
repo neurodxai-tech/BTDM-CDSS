@@ -137,7 +137,7 @@ A doctor logs in, clicks **+ Upload study** on **My worklist**, opens the study 
 | `true` (default) | `best_model_seed42` is pinned when first found and stays active. Other checkpoints are imported and validated but **not used**. Required for the whole of Part 2. |
 | `false` | The newest validated imported file becomes active automatically, swapped in between jobs. **Development only** — with the whole `Modeltrained` folder connected this could activate an ablation or cross-validation model. |
 
-Seed 42 checkpoint SHA-256: `604e1b4191cd27fc14a8500d613578a137f31ad98b742b765e6a59ba794abce2`. Published weights: [insert release/Zenodo URL].
+Seed 42 checkpoint SHA-256: `604e1b4191cd27fc14a8500d613578a137f31ad98b742b765e6a59ba794abce2`. Published weights: https://github.com/neurodxai-tech/BTDM-CDSS/releases/download/v1.2.1/BTDM-CDSS_model_seed42.pth.
 
 ---
 
