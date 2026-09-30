@@ -1,0 +1,30 @@
+# Dependencies / build output
+node_modules/
+.next/
+out/
+__pycache__/
+*.pyc
+.venv/
+
+# Local config and secrets
+.env
+.env.local
+.env.*.local
+
+# Logs / OS junk
+*.log
+.DS_Store
+__MACOSX/
+
+# Model weights are distributed as a release asset, not in git
+btdm-backend/weights/*.pt
+btdm-backend/weights/*.pth
+btdm-backend/weights/calibration.json
+
+# Local development data
+btdm-backend/btdm-dev.db
+btdm-backend/object-store/
+btdm-backend/model-cache/
+btdm-backend/.worker.pid
+btdm-backend/weights/inbox/*
+!btdm-backend/weights/inbox/.gitkeep

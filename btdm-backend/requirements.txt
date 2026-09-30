@@ -1,0 +1,9 @@
+# Inference worker (and local all-in-one development): API deps + ML stack.
+-r requirements-api.txt
+
+torch==2.3.1
+torchvision==0.18.1
+nibabel==5.2.1
+scipy==1.13.1
+opencv-python-headless==4.10.0.84
+python-dotenv==1.0.1

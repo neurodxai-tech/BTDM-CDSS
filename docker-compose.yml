@@ -1,0 +1,127 @@
+# BTDM-CDSS — research build, not a medical device.
+#
+#   1. cp .env.example .env   then set POSTGRES_PASSWORD, ADMIN_BOOTSTRAP_PASSWORD
+#      and MODEL_TRAINING_DIR (or put the Seed 42 checkpoint at
+#      btdm-backend/weights/classifier.pt)
+#   2. docker compose up -d --build
+#
+#   Frontend  http://localhost:3000
+#   API docs  http://localhost:8000/docs
+#   Health    http://localhost:8000/health   -> "checkpoint_id": "best_model_seed42"
+#
+# Services: postgres (records) · redis (queue, live events, sessions)
+#           api · worker (model) · frontend
+# Images, Grad-CAM PNGs and checkpoints are kept in the shared Docker volume
+# btdm_objectstore. (To use S3-compatible storage instead, set S3_ENDPOINT,
+# S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY for api and worker.)
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgresql+psycopg://btdm:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/btdm
+  REDIS_URL: redis://redis:6379/0
+  OBJECT_STORE_DIR: /app/object-store
+  WEIGHTS_DIR: /app/weights
+  MODEL_VERSION: ${MODEL_VERSION:-v1.0.0-seed42}
+  EXPECTED_CHECKPOINT_ID: best_model_seed42
+  MODEL_LOCKED: ${MODEL_LOCKED:-true}          # keep true for the whole of Part 2
+  MODEL_AUTO_ACTIVATE: ${MODEL_AUTO_ACTIVATE:-true}
+  MODEL_EXTERNALLY_VALIDATED: "false"
+  CONFIDENCE_GATE: "0.70"
+  SESSION_TTL_HOURS: "12"
+  SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-30}
+  PASSWORD_MIN_LENGTH: ${PASSWORD_MIN_LENGTH:-8}
+  PASSWORD_MAX_LENGTH: ${PASSWORD_MAX_LENGTH:-64}
+  GENERATED_PASSWORD_LENGTH: ${GENERATED_PASSWORD_LENGTH:-8}
+  CORS_ORIGINS: ${PUBLIC_APP_URL:-http://localhost:3000}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: btdm
+      POSTGRES_USER: btdm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U btdm -d btdm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Append-only file so queued jobs and sessions survive a Redis restart.
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./btdm-backend
+      target: api
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      ADMIN_BOOTSTRAP_PASSWORD: ${ADMIN_BOOTSTRAP_PASSWORD:?set ADMIN_BOOTSTRAP_PASSWORD in .env}
+    volumes:
+      - ./btdm-backend/weights:/app/weights:ro   # read once, to register the first model
+      - objectstore:/app/object-store
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:8000:8000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build:
+      context: ./btdm-backend
+      target: worker
+      # args: { TORCH_INDEX: https://download.pytorch.org/whl/cu121 }   # NVIDIA GPU build
+    restart: unless-stopped
+    environment:
+      <<: *backend-env
+      MODEL_WATCH_DIR: /model-inbox
+      MODEL_WATCH_LABEL: ${MODEL_TRAINING_DIR:-btdm-backend/weights/inbox}
+      MODEL_WATCH_INTERVAL: "30"
+      MODEL_WATCH_INCLUDE: ${MODEL_WATCH_INCLUDE:-*}
+      MODEL_WATCH_EXCLUDE: ${MODEL_WATCH_EXCLUDE:-}
+    volumes:
+      - objectstore:/app/object-store
+      - modelcache:/app/model-cache
+      # Your training output folder, read-only. New .pt/.pth files appear in
+      # Admin → Model registry within about a minute of training saving them.
+      - "${MODEL_TRAINING_DIR:-./btdm-backend/weights/inbox}:/model-inbox:ro"
+    depends_on:
+      api: { condition: service_healthy }   # API creates tables + registers the first model
+    # For an NVIDIA GPU (requires nvidia-container-toolkit on the host):
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+
+  frontend:
+    build:
+      context: ./btdm-cdss
+      args:
+        NEXT_PUBLIC_USE_MOCK_API: "false"
+        # Baked in at build time: rebuild the frontend after changing PUBLIC_API_URL.
+        NEXT_PUBLIC_API_BASE_URL: ${PUBLIC_API_URL:-http://localhost:8000}/api/v1
+        NEXT_PUBLIC_OHIF_VIEWER_URL: http://localhost:3001
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata: { name: btdm_pgdata }
+  redisdata: { name: btdm_redisdata }
+  objectstore: { name: btdm_objectstore }
+  modelcache: { name: btdm_modelcache }
