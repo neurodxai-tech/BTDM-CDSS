@@ -1,0 +1,11 @@
+{
+  "title": "BTDM-CDSS: Brain Tumor Diagnosis Model - Clinical Decision Support System",
+  "upload_type": "software",
+  "description": "Research software accompanying Singh, Pokharel and Pant, 'Deep learning techniques for brain tumour diagnosis via multi-source domain alignment with contrastive learning' (npj Digital Medicine, under review). Hybrid EfficientNet-B0/Transformer four-class MRI classifier (Seed 42 checkpoint, 25,057,731 parameters; SHA-256 604e1b4191cd27fc14a8500d613578a137f31ad98b742b765e6a59ba794abce2), deployed as a web-based clinical decision support system with per-doctor workspaces, audit logging and a model version lock. Research use only; not a medical device.",
+  "creators": [
+    {"name": "Singh, D. B."},
+    {"name": "Pokharel, B."},
+    {"name": "Pant, B."}
+  ],
+  "keywords": ["brain tumour", "MRI", "deep learning", "domain alignment", "contrastive learning", "clinical decision support", "Nepal"]
+}
